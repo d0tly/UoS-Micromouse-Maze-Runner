@@ -26,6 +26,10 @@ def turn(runner, direction: str):
         runner.orientation = orientations[runner.orientation]
     return runner
 
+def isAccessible(maze, x, y):
+    width, height = get_dimensions(maze)
+    return 0 <= x < width and 0 <= y < height
+
 def forward(runner, width, height):
     print(f"Moving forward from ({runner.x}, {runner.y}) facing {runner.orientation}")
     if runner.orientation == "N" and runner.y > 0:
@@ -61,87 +65,55 @@ def go_straight(runner, maze):
         print(f"Cannot go straight from {runner.x}, {runner.y}, {runner.orientation}")
         raise ValueError("Cannot go straight")
 
-def bfs_update_distances(maze, goal):
+def manhattan_distance(maze, goal):
     width, height = get_dimensions(maze)
-    distanceMaze = [[float('inf')] * width for _ in range(height)]
-    queue = deque([goal])
-    distanceMaze[goal[1]][goal[0]] = 0
-
-    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # N, E, S, W
-
-    while queue:
-        x, y = queue.popleft()
-        current_distance = distanceMaze[y][x]
-
-        for dx, dy in directions:
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < width and 0 <= ny < height and distanceMaze[ny][nx] == float('inf'):
-                if not maze[ny][nx][directions.index((-dx, -dy))]:  # Check if there's no wall in the opposite direction
-                    distanceMaze[ny][nx] = current_distance + 1
-                    queue.append((nx, ny))
-
+    distanceMaze = [[0 for _ in range(width)] for _ in range(height)]
+    for y in range(height):
+        for x in range(width):
+            distanceMaze[y][x] = abs(goal[0] - x) + abs(goal[1] - y)
     return distanceMaze
 
-def move(runner, maze, distanceMaze, goal) -> str:
+def move(runner, maze, goal, isVisitedMaze) -> str:
     check = sense_walls(maze, runner)
-    distanceCheck = []
-
+    decisionQueue = []
+    
     moves = {
-        "N": [(0, 1), (1, 0), (-1, 0)],
-        "E": [(1, 0), (0, -1), (0, 1)],
-        "S": [(0, -1), (-1, 0), (1, 0)],
-        "W": [(-1, 0), (0, 1), (0, -1)]
+        "N": [[(-1, 0),'Left'], [(0, 1),'Forward'], [(1, 0),'Right']],
+        "E": [[(0, 1),'Left'], [(1, 0),'Forward'], [(0, -1),'Right']],
+        "S": [[(1, 0),'Left'], [(0, -1),'Forward'], [(-1, 0),'Right']],
+        "W": [[(0, -1),'Left'], [(-1, 0),'Forward'], [(0, 1),'Right']]
     }
     
-    orientation = get_orientation(runner)
-    width, height = get_dimensions(maze)
-    
     for i in range(3):
-        x, y = moves[orientation][i]
-        new_x = get_x(runner) + x
-        new_y = get_y(runner) + y
-        if 0 <= new_x < width and 0 <= new_y < height:
-            if not check[i]:
-                distanceCheck.append(distanceMaze[new_y][new_x])
-            else:
-                distanceCheck.append(float("inf"))
-                if orientation == "N":
-                    add_horizontal_wall(maze, get_x(runner), get_y(runner))
-                elif orientation == "E":
-                    add_vertical_wall(maze, get_x(runner), get_y(runner))
-                elif orientation == "S":
-                    add_horizontal_wall(maze, get_x(runner), get_y(runner) - 1)
-                elif orientation == "W":
-                    add_vertical_wall(maze, get_x(runner) - 1, get_y(runner))
-                # Recalculate distances after adding a wall
-                distanceMaze = bfs_update_distances(maze, goal)
-        else:
-            distanceCheck.append(float("inf"))
+            if check[i] == False:
+                        xNum, yNum = moves[get_orientation(runner)][i]
+                        coordX = get_x(runner) + xNum
+                        coordY = get_y(runner) + yNum
+                        if isAccessible(maze, coordX, coordY):
+                            decisionQueue.append([(coordX, coordY), isVisitedMaze[coordY][coordX], distanceMaze[coordY][coordX]], moves[get_orientation(runner)][i][1])
     
-    min_index = distanceCheck.index(min(distanceCheck))
-    if min_index == 0:
-        print(f"Turning Left from ({runner.x}, {runner.y}) facing {runner.orientation}")
-        turn(runner, "Left")
-    elif min_index == 1:
-        print(f"Going Straight from ({runner.x}, {runner.y}) facing {runner.orientation}")
-        go_straight(runner, maze)
-    elif min_index == 2:
-        print(f"Turning Right from ({runner.x}, {runner.y}) facing {runner.orientation}")
-        turn(runner, "Right")
     
+    if len(decisionQueue) == 0:
+        turn(runner, 'Right')
+        turn(runner, 'Right')
+        return 'RR'
+    else:
+              
+                            
+            
     return orientation
 
 def explore(runner, maze, goal: Optional[Tuple[int, int]] = None) -> str:
     if goal is None:
         goal = (get_dimensions(maze)[0] - 1, get_dimensions(maze)[1] - 1)
-        
-    distanceMaze = bfs_update_distances(maze, goal)
     
-    resultingCombination = ''
+    visitedQueue = []
+    distanceMaze = manhattan_distance(maze, goal)
+    isVisitedMaze = [[False for _ in range(get_dimensions(maze)[0])] for _ in range(get_dimensions(maze)[1])]
     
     while (get_x(runner), get_y(runner)) != goal:
         print(runner.x, runner.y, runner.orientation)
-        resultingCombination += move(runner, maze, distanceMaze, goal)
+        move(runner, maze, goal, isVisitedMaze)
     
     return resultingCombination
 
