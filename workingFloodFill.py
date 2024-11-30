@@ -182,13 +182,17 @@ def create_maze(width: int = 5, height: int = 5):
     return [[[False, False, False, False] for _ in range(width)] for _ in range(height)]
 
 def add_horizontal_wall(maze, x_coordinate, horizontal_line):
-    maze[horizontal_line][x_coordinate][2] = True
-    maze[horizontal_line-1][x_coordinate][0] = True
+    if 0 <= horizontal_line < len(maze) and 0 <= x_coordinate < len(maze[0]):
+        maze[horizontal_line][x_coordinate][2] = True
+    if 0 <= horizontal_line - 1 < len(maze) and 0 <= x_coordinate < len(maze[0]):
+        maze[horizontal_line-1][x_coordinate][0] = True
     return maze
 
 def add_vertical_wall(maze, y_coordinate, vertical_line):
-    maze[y_coordinate][vertical_line][1] = True
-    maze[y_coordinate][vertical_line-1][3] = True
+    if 0 <= y_coordinate < len(maze) and 0 <= vertical_line < len(maze[0]):
+        maze[y_coordinate][vertical_line][1] = True
+    if 0 <= y_coordinate < len(maze) and 0 <= vertical_line - 1 < len(maze[0]):
+        maze[y_coordinate][vertical_line-1][3] = True
     return maze
 
 def get_dimensions(maze) -> Tuple[int, int]:
@@ -239,9 +243,9 @@ def floodfill(startX, startY, isVisitedMaze, returnMaze, wallsMaze):
                 coordY = startY + yNum
                 if 0 <= coordX < 16 and 0 <= coordY < 16 and isVisitedMaze[coordY][coordX] and cells[coordY][coordX] == 0:
                     queue.append((coordX, coordY))
-                    returnMaze[coordY][coordX] = findSmallestDistance(coordX, coordY, wallsMaze, isVisitedMaze)
+                    returnMaze[coordY][coordX] = findSmallestDistance(coordX, coordY, wallsMaze, isVisitedMaze) + 1
 
-def move(x, y, orient, maze, goal, isVisitedMaze, distanceMaze, junctionQueue, state):
+def move(x, y, orient, maze, goal, isVisitedMaze, distanceMaze, junctionQueue, wallsMaze, state):
     L = API.wallLeft()
     R = API.wallRight()
     F = API.wallFront()
@@ -256,20 +260,29 @@ def move(x, y, orient, maze, goal, isVisitedMaze, distanceMaze, junctionQueue, s
     }
     
     for i in range(3):
+        xNum, yNum = moves[orient][i][0]
+        coordX = x + xNum
+        coordY = y + yNum
         if not [L, F, R][i]:
-            xNum, yNum = moves[orient][i][0]
-            coordX = x + xNum
-            coordY = y + yNum
             if 0 <= coordX < 16 and 0 <= coordY < 16 and checkCell(coordX, coordY, cells) == 1:
                 decisionQueue.append([(coordX, coordY), isVisitedMaze[coordY][coordX], moves[orient][i][1], distanceMaze[coordY][coordX]])
-    
+        else:
+            print(f"Wall at ({coordX}, {coordY})")
+            if orient == 0:
+                add_horizontal_wall(wallsMaze, coordX, coordY)
+            elif orient == 1:
+                add_vertical_wall(wallsMaze, x, y)
+            elif orient == 2:
+                add_horizontal_wall(wallsMaze, x, y)
+            elif orient == 3:
+                add_vertical_wall(wallsMaze, coordY, coordX)
     if len(decisionQueue) == 0:
         return 'RR'
     else:
         if state == 3:
             visited_moves = [move for move in decisionQueue if move[1] >= 1]
             if visited_moves:
-                next_move = sorted(visited_moves, key=lambda x: (x[1],x[3]))[0]
+                next_move = sorted(visited_moves, key=lambda x: x[3])[0]
         elif any([x[3] < 5 for x in decisionQueue]):
             if(any([x[1] > 2 for x in decisionQueue])):
                 next_move = sorted(decisionQueue, key=lambda x: (x[1],x[3]))[0]
@@ -291,12 +304,15 @@ def main():
     x, y = 0, 0
     orient = 0  
     goal = (7, 8)
+    crackX, crackY = -1, -1 
     isVisitedMaze = [[0 for _ in range(16)] for _ in range(16)]
     isVisitedMaze[0][0] += 1 
     junctionQueue = []
     junctionMaze = []
     answer = []
     state = 0
+    wallsMaze = create_maze(16, 16)
+    returnMaze = [[1000 for _ in range(16)] for _ in range(16)]
     
     while True:
         print(state)
@@ -304,8 +320,8 @@ def main():
         if state == 3:
             if (x,y) == (0,0):
                 return answer
-            junctionMaze = manhattan_distance(flood2, (0,0))
-            direction = move(x, y, orient, cells, goal, isVisitedMaze, junctionMaze, junctionQueue, 3)
+            returnMaze = floodfill(crackX, crackY, isVisitedMaze, returnMaze, wallsMaze)
+            direction = move(x, y, orient, cells, goal, isVisitedMaze, returnMaze, junctionQueue, wallsMaze, 3)
             answer.append((x,y))
         API.setColor(x, y, 'R')
         API.setColor(8, 8, 'G')
@@ -314,14 +330,17 @@ def main():
         API.setColor(7, 7, 'G')  
         print(f"Current position: ({x}, {y}), Orientation: {orient}")
         if state == 0:
-            direction = move(x, y, orient, cells, goal, isVisitedMaze, flood, junctionQueue, state)
+            direction = move(x, y, orient, cells, goal, isVisitedMaze, flood, junctionQueue, wallsMaze, state)
         else:
             junctionMaze = manhattan_distance(flood2, junctionQueue[-1][0])
-            direction = move(x, y, orient, cells, goal, isVisitedMaze, junctionMaze, junctionQueue, state)
+            direction = move(x, y, orient, cells, goal, isVisitedMaze, junctionMaze, junctionQueue, wallsMaze, state)
             
             
         if (x, y) in [(7, 7), (8, 7), (7, 8), (8, 8)] and state != 3:
                 print(f"position is {x}, {y}")
+                returnMaze[y][x] = 0
+                crackX, crackY = (x, y)
+                print(returnMaze)
                 arr = [(7, 7), (8, 7), (7, 8), (8, 8)]
                 arr.remove((x, y)) 
                 for i in arr:
