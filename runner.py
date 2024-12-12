@@ -435,7 +435,7 @@ def move(runner, maze, infoMaze):
     moves = {
         'N': [[(-1, 0),'Left'], [(0, 1),'Forward'], [(1, 0),'Right']],  
         'E': [[(0, 1),'Left'], [(1, 0),'Forward'], [(0, -1),'Right']],  
-        'S': [[(1, 0),'Left'], [(0, -1),'Forward'], [(-1, 0),'Right']], 
+        'S': [[(1, 0),'Left'], [(0, 1),'Forward'], [(-1, 0),'Right']], 
         'W': [[(0, -1),'Left'], [(-1, 0),'Forward'], [(0, 1),'Right']]  
     }
     
