@@ -2,13 +2,8 @@ import argparse
 import os
 import csv
 from typing import List, Optional, Tuple
-from runner import create_runner, get_x, get_y, turn, forward, get_orientation, go_straight, move, floodfill
-from maze import create_maze, add_horizontal_wall, add_vertical_wall, createInfoMaze
-
-def reflect_indices(x, y, height):
-    reflected_y = height - 1 - y
-
-    return (x // 2, reflected_y)
+from runner import create_runner, get_x, get_y, turn, forward, get_orientation, go_straight, move, floodfill, reflect_indices
+from maze import create_maze, add_horizontal_wall, add_vertical_wall, createInfoMaze, add_horizontal_wall_reader, add_vertical_wall_reader
 
 def shortest_path(maze, start: Optional[Tuple[int, int]] = (0,0), goal: Optional[Tuple[int, int]] = (0,0)) -> List[Tuple[int, int]]:
     if goal == (0,0):
@@ -16,26 +11,32 @@ def shortest_path(maze, start: Optional[Tuple[int, int]] = (0,0), goal: Optional
     runner = create_runner(start[0], start[1], "N")
     infoMaze = createInfoMaze(maze, goal)
     infoMaze = floodfill(goal, maze, infoMaze)
+    runner.real_x, runner.real_y = reflect_indices(runner.x, runner.y, len(maze))
     answer = []
     answer.append((get_x(runner), get_y(runner)))
     
     while True:
         direction = move(runner, maze, infoMaze)
+        
         if direction == "Forward":
             runner = go_straight(runner, maze)
-            
+            answer.append((get_x(runner), get_y(runner)))
+
         if direction == "Left" or direction == "Right":
             runner = turn(runner, direction)
+            
             runner = go_straight(runner, maze)
+            answer.append((get_x(runner), get_y(runner)))
+            
+            
         
         if direction == "Back":
-            runner = turn(runner, "Back")
-        
-        answer.append((get_x(runner), get_y(runner)))
-        if (runner.x, runner.y) == goal:
-            print(answer)
+            runner = turn(runner, direction)
+
+                
+        if (runner.real_x, runner.real_y) == reflect_indices(goal[0],goal[1],len(maze)):
             return answer
-        
+            
 
 def maze_reader(maze_file: str):
     try:
@@ -75,20 +76,20 @@ def maze_reader(maze_file: str):
     rows = len(textMaze)
     cols = len(textMaze[0])
     maze = create_maze(int((len(textMaze[0])-1)/2), int((len(textMaze) - 1)/2))
-    
     for y in range(rows):
         if y % 2 != 0:
             for x in range(cols):
                 if x % 2 != 0 and x != 0 and x != cols - 1:
                     coordX, coordY = int((x-1)/2), int((y-1)/2)
-                    if y + 1 < rows and textMaze[y+1][x] == "#":
-                        maze = add_horizontal_wall(maze, coordX, coordY+1)
-                    if y - 1 >= 0 and textMaze[y-1][x] == "#":
-                        maze = add_horizontal_wall(maze, coordX, coordY)
-                    if x + 1 < cols and textMaze[y][x+1] == "#":
-                        maze = add_vertical_wall(maze, coordY, coordX+1)
-                    if x - 1 >= 0 and textMaze[y][x-1] == "#":
-                        maze = add_vertical_wall(maze, coordY, coordX)
+            
+                    if textMaze[y-1][x] == "#":
+                        maze = add_horizontal_wall_reader(maze, coordX, coordY-1)
+                    if textMaze[y+1][x] == "#":
+                        maze = add_horizontal_wall_reader(maze, coordX, coordY)
+                    if textMaze[y][x+1] == "#":
+                        maze = add_vertical_wall_reader(maze, coordY, coordX+1)
+                    if textMaze[y][x-1] == "#":
+                        maze = add_vertical_wall_reader(maze, coordY, coordX)
     return maze
 
 
@@ -123,9 +124,6 @@ def parseArgs():
         print(f"Error: {e}")
         return
 
-    print("Maze:")
-    for row in maze:
-        print(row)
     print(f"\nstarting pos{start}")
     print(f"goal pos{goal}")
 
@@ -136,6 +134,7 @@ def explore_maze(maze, start, goal, maze_file):
     runner = create_runner(start[0], start[1], "N")
     infoMaze = createInfoMaze(maze, goal)
     infoMaze = floodfill(goal, maze, infoMaze)
+    runner.real_x, runner.real_y = reflect_indices(runner.x, runner.y, len(maze))
     exploration_steps = 0
     path = []
     path.append((get_x(runner), get_y(runner)))
@@ -161,8 +160,6 @@ def explore_maze(maze, start, goal, maze_file):
                 actions.append("B")
                 runner = turn(runner, "Back")
             
-            path.append()
-            
             exploration_steps += 1
             writer.writerow({"Step": exploration_steps, "x-coordinate": path[count][0], "y-coordinate": path[count][1], "Actions": "".join(actions)})
             count += 1
@@ -170,15 +167,14 @@ def explore_maze(maze, start, goal, maze_file):
             
             path.append((get_x(runner), get_y(runner)))
             
-            if (runner.x, runner.y) == goal:
+            if (runner.real_x, runner.real_y) == reflect_indices(goal[0], goal[1], len(maze)):
                 writer.writerow({"Step": exploration_steps, "x-coordinate": path[count][0], "y-coordinate": path[count][1], "Actions": "".join(actions)})
-                break
-    
-    return exploration_steps, path
+                return exploration_steps, path
+
 
 def write_statistics(maze_file, exploration_steps, path):
     path_length = len(path)
-    score = exploration_steps / 4 + path_length
+    score = (exploration_steps / 4) + path_length
     
     with open("statistics.txt", "w") as file:
         file.write(f"{maze_file}\n")
@@ -189,8 +185,6 @@ def write_statistics(maze_file, exploration_steps, path):
 
 def main():
     parseArgs()
-
-    
     
 def convert_to_grid_format(maze_file, runner):
     text = ''
@@ -205,8 +199,8 @@ def convert_to_grid_format(maze_file, runner):
     rows = len(maze)
     cols = len(maze[0])
     grid = []
-    x = get_x(runner)
-    y = get_y(runner)
+    x = runner.real_x
+    y = runner.real_y
     orient = get_orientation(runner)
     
     for i in range(rows):
@@ -246,5 +240,3 @@ def convert_to_grid_format(maze_file, runner):
 
 if __name__ == "__main__":
     main()
-    
-    

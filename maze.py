@@ -1,5 +1,11 @@
 from typing import Tuple
 
+def reflect_indices(x, y, height):
+    reflected_y = height - y - 1
+
+    return (x, reflected_y)
+
+
 def create_maze(width: int = 5, height: int = 5):
     maze = [[[False, False, False, False] for _ in range(width)] for _ in range(height)]
     
@@ -14,32 +20,44 @@ def createInfoMaze(maze, goal):
 
 
 def add_vertical_wall(maze, y_coordinate, vertical_line):
+    vertical_line, y_coordinate = reflect_indices(vertical_line, y_coordinate, len(maze))
+    
     if 0 <= y_coordinate < len(maze) and 0 <= vertical_line < len(maze[0]):
-        if maze[y_coordinate][vertical_line][3] != True:
-            print(f"Adding vertical wall at ({vertical_line}, {y_coordinate})")
-            maze[y_coordinate][vertical_line][3] = True
+        maze[y_coordinate][vertical_line][3] = True
     if 0 <= y_coordinate < len(maze) and 0 <= vertical_line - 1 < len(maze[0]):
-        if maze[y_coordinate][vertical_line-1][1] != True:
-            print(f"Adding vertical wall at ({vertical_line-1}, {y_coordinate})")
-            maze[y_coordinate][vertical_line-1][1] = True
+        maze[y_coordinate][vertical_line-1][1] = True
     return maze
 
 def add_horizontal_wall(maze, x_coordinate, horizontal_line):
+    x_coordinate, horizontal_line = reflect_indices(x_coordinate, horizontal_line, len(maze))
+    
     if 0 <= horizontal_line < len(maze) and 0 <= x_coordinate < len(maze[0]):
-        if maze[horizontal_line][x_coordinate][2] != True:
-            print(f"Adding horizontal wall at ({x_coordinate}, {horizontal_line})")
             maze[horizontal_line][x_coordinate][2] = True
-    if 0 <= horizontal_line - 1 < len(maze) and 0 <= x_coordinate < len(maze[0]):
-        if maze[horizontal_line-1][x_coordinate][0] != True:
-            print(f"Adding horizontal wall at ({x_coordinate}, {horizontal_line-1})")
-            maze[horizontal_line-1][x_coordinate][0] = True
+    if 0 <= horizontal_line + 1 < len(maze) and 0 <= x_coordinate < len(maze[0]):
+            maze[horizontal_line+1][x_coordinate][0] = True
+    return maze
+
+def add_vertical_wall_reader(maze, y_coordinate, vertical_line):
+    if 0 <= y_coordinate < len(maze) and 0 <= vertical_line < len(maze[0]):
+        maze[y_coordinate][vertical_line][3] = True
+    if 0 <= y_coordinate < len(maze) and 0 <= vertical_line - 1 < len(maze[0]):
+        maze[y_coordinate][vertical_line-1][1] = True
+    return maze
+
+def add_horizontal_wall_reader(maze, x_coordinate, horizontal_line):
+    if 0 <= horizontal_line < len(maze) and 0 <= x_coordinate < len(maze[0]):
+            maze[horizontal_line][x_coordinate][2] = True
+    if 0 <= horizontal_line + 1 < len(maze) and 0 <= x_coordinate < len(maze[0]):
+            maze[horizontal_line+1][x_coordinate][0] = True
     return maze
 
 def get_dimensions(maze) -> Tuple[int, int]:
     return len(maze[0]), len(maze)
 
 def get_walls(maze, x_coordinate: int, y_coordinate: int) -> Tuple[bool, bool, bool, bool]:
+    x_coordinate, y_coordinate = reflect_indices(x_coordinate, y_coordinate, len(maze))
     return tuple(maze[y_coordinate][x_coordinate])
+
 """"
 def updateWalls(runner, L, R, F, wallsMaze):
     orient = get_orientation(runner)

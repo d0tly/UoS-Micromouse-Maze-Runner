@@ -239,7 +239,7 @@ def add_vertical_wall(maze, y_coordinate, vertical_line):
     return maze
 
 def add_horizontal_wall(maze, x_coordinate, horizontal_line):
-    x_coordinate, horizontal_line = reflect_indices(x_coordinate, horizontal_line, len(maze[0]))
+    x_coordinate, horizontal_line = reflect_indices(x_coordinate, horizontal_line, len(maze))
     
     if 0 <= horizontal_line < len(maze) and 0 <= x_coordinate < len(maze[0]):
             maze[horizontal_line][x_coordinate][2] = True
@@ -508,8 +508,6 @@ def shortest_path(maze, start: Optional[Tuple[int, int]] = (0,0), goal: Optional
             return answer
             
 
-maze = maze_reader('doom_maze.mz')
-
-runner = create_runner(0, 0, "N")
-shortest_path(maze, (0,0), (99, 49))
-explore(runner, maze, (99,49), 'doom_maze.mz')
+maze = maze_reader("doom_maze.mz")
+Runner = create_runner(0, 0, "N")
+explore(Runner, maze, (99, 49), "doom_maze.mz")
