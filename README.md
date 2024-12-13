@@ -36,11 +36,6 @@ Example
 ```sh
 python maze_runner.py maze1.mz --starting 2,1 --goal 4,5
 ```
-Testing
-To run the unit tests, execute:
-```sh
-python test_runner.py
-```
 
 Example
 Here is an example of how to use the Maze Runner:
